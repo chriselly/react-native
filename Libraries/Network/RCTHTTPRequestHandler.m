@@ -9,6 +9,10 @@
 
 #import "RCTHTTPRequestHandler.h"
 
+#import "RCTAssert.h"
+#import "RCTConvert.h"
+#import "RCTUtils.h"
+
 @interface RCTHTTPRequestHandler () <NSURLSessionDataDelegate>
 
 @end
@@ -50,8 +54,8 @@ RCT_EXPORT_MODULE()
   return [@[@"http", @"https", @"file"] containsObject:[request.URL.scheme lowercaseString]];
 }
 
-- (NSURLSessionDataTask *)sendRequest:(NSURLRequest *)request
-                         withDelegate:(id<RCTURLRequestDelegate>)delegate
+- (id)sendRequest:(NSURLRequest *)request
+     withDelegate:(id<RCTURLRequestDelegate>)delegate
 {
   // Lazy setup
   if (!_session && [self isValid]) {
@@ -68,22 +72,12 @@ RCT_EXPORT_MODULE()
   return task;
 }
 
-- (void)cancelRequest:(NSURLSessionDataTask *)task
+- (void)cancelRequest:(NSURLSessionDataTask *)requestToken
 {
-  [task cancel];
-  [_delegates removeObjectForKey:task];
+  [requestToken cancel];
 }
 
 #pragma mark - NSURLSession delegate
-
-- (void)URLSession:(NSURLSession *)session
-              task:(NSURLSessionTask *)task
-   didSendBodyData:(int64_t)bytesSent
-    totalBytesSent:(int64_t)totalBytesSent
-totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
-{
-  [[_delegates objectForKey:task] URLRequest:task didSendDataWithProgress:totalBytesSent];
-}
 
 - (void)URLSession:(NSURLSession *)session
           dataTask:(NSURLSessionDataTask *)task

@@ -25,8 +25,6 @@
 @property (nonatomic, strong) UIColor *textColor;
 @property (nonatomic, strong) UIColor *placeholderTextColor;
 @property (nonatomic, strong) UIFont *font;
-@property (nonatomic, assign) NSInteger mostRecentEventCount;
-@property (nonatomic, strong) NSNumber *maxLength;
 
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher NS_DESIGNATED_INITIALIZER;
 

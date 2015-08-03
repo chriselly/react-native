@@ -90,7 +90,7 @@ function inject() {
   ReactNativeComponent.injection.injectTextComponentClass(
     ReactNativeTextComponent
   );
-  ReactNativeComponent.injection.injectGenericComponentClass(function(tag) {
+  ReactNativeComponent.injection.injectAutoWrapper(function(tag) {
     // Show a nicer error message for non-function tags
     var info = '';
     if (typeof tag === 'string' && /^[a-z]/.test(tag)) {

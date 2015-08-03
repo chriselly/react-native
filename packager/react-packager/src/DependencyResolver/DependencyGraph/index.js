@@ -29,7 +29,6 @@ const validateOpts = declareOpts({
   },
   ignoreFilePath: {
     type: 'function',
-
     default: function(){}
   },
   fileWatcher: {
@@ -150,16 +149,7 @@ class DependencyGraph {
 
   getOrderedDependencies(entryPath) {
     return this.load().then(() => {
-      const absPath = this._getAbsolutePath(entryPath);
-
-      if (absPath == null) {
-        throw new NotFoundError(
-          'Could not find source file at %s',
-          entryPath
-        );
-      }
-
-      const absolutePath = path.resolve(absPath);
+      const absolutePath = path.resolve(this._getAbsolutePath(entryPath));
 
       if (absolutePath == null) {
         throw new NotFoundError(

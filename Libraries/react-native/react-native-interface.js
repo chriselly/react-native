@@ -21,6 +21,3 @@ declare var fetch: any;
 declare var Headers: any;
 declare var Request: any;
 declare var Response: any;
-declare module requestAnimationFrame {
-  declare var exports: (callback: any) => any;
-}

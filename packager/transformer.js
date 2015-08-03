@@ -10,7 +10,7 @@
  */
 'use strict';
 
-var babel = require('babel-core');
+var babel = require('babel');
 
 function transform(srcTxt, filename, options) {
   var result = babel.transform(srcTxt, {
@@ -23,7 +23,7 @@ function transform(srcTxt, filename, options) {
       'es6.blockScoping',
       'es6.classes',
       'es6.destructuring',
-      'es6.parameters.rest',
+      'es6.parameters',
       'es6.properties.computed',
       'es6.properties.shorthand',
       'es6.spread',

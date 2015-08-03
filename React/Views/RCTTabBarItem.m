@@ -51,12 +51,10 @@
   _icon = [icon copy];
 
   // Check if string matches any custom images first
-  //  UIImage *image = [RCTConvert UIImage:_icon];
-  UIImage *image = [[RCTConvert UIImage:_icon] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-
+  UIImage *image = [RCTConvert UIImage:_icon];
   UITabBarItem *oldItem = _barItem;
   if (image) {
-
+    
     // Recreate barItem if previous item was a system icon
     if (wasSystemIcon) {
       _barItem = nil;

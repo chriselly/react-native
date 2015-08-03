@@ -12,11 +12,9 @@ const EventEmitter  = require('events').EventEmitter;
 const sane = require('sane');
 const Promise = require('promise');
 const exec = require('child_process').exec;
-const _ = require('underscore');
 
 const MAX_WAIT_TIME = 25000;
 
-// TODO(amasad): can we use watchman version command instead?r
 const detectingWatcherClass = new Promise(function(resolve) {
   exec('which watchman', function(err, out) {
     if (err || out.length === 0) {
@@ -81,11 +79,9 @@ class FileWatcher extends EventEmitter {
 
   static createDummyWatcher() {
     const ev = new EventEmitter();
-    _.extend(ev, {
-      isWatchman: () => Promise.resolve(false),
-      end: () => Promise.resolve(),
-    });
-
+    ev.end = function() {
+      return Promise.resolve();
+    };
     return ev;
   }
 }

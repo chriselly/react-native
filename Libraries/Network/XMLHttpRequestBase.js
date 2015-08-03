@@ -154,7 +154,7 @@ class XMLHttpRequestBase {
     this._lowerCaseResponseHeaders =
       Object.keys(headers).reduce((lcaseHeaders, headerName) => {
         lcaseHeaders[headerName.toLowerCase()] = headers[headerName];
-        return lcaseHeaders;
+        return headers;
       }, {});
   }
 

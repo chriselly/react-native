@@ -64,7 +64,7 @@ typedef void (^RCTViewEventHandler)(RCTView *view);
 @property (nonatomic, assign) CGFloat borderBottomRightRadius;
 
 /**
- * Border colors (actually retained).
+ * Border colors.
  */
 @property (nonatomic, assign) CGColorRef borderTopColor;
 @property (nonatomic, assign) CGColorRef borderRightColor;

@@ -19,6 +19,7 @@ var React = require('React');
 var StyleSheet = require('StyleSheet');
 
 var requireNativeComponent = require('requireNativeComponent');
+var verifyPropTypes = require('verifyPropTypes');
 
 /**
  * Use `ProgressViewIOS` to render a UIProgressView on iOS.

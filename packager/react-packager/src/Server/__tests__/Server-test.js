@@ -39,7 +39,6 @@ describe('processRequest', function() {
       requestHandler(
         { url: requrl },
         {
-          setHeader: jest.genMockFunction(),
           end: function(res) {
             resolve(res);
           }

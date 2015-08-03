@@ -2353,8 +2353,7 @@ describe('DependencyGraph', function() {
           }
           callbacks.push(callback);
           return this;
-        },
-        isWatchman: () => Promise.resolve(false),
+        }
       };
     });
 

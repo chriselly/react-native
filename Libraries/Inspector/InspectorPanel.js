@@ -58,7 +58,7 @@ class InspectorPanel extends React.Component {
     }
     return (
       <View style={styles.container}>
-        {!this.props.devtoolsIsOpen && contents}
+        {contents}
         <View style={styles.buttonRow}>
           <Button
             title={'Inspect'}
@@ -76,7 +76,6 @@ class InspectorPanel extends React.Component {
 }
 
 InspectorPanel.propTypes = {
-  devtoolsIsOpen: PropTypes.bool,
   inspecting: PropTypes.bool,
   setInspecting: PropTypes.func,
   inspected: PropTypes.object,

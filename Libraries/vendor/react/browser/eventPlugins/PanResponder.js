@@ -294,7 +294,7 @@ var PanResponder = {
           return false;
         }
         PanResponder._updateGestureStateOnMove(gestureState, touchHistory);
-        return config.onMoveShouldSetPanResponderCapture ?
+        return config.onMoveShouldSetResponderCapture ?
           config.onMoveShouldSetPanResponderCapture(e, gestureState) : false;
       },
 

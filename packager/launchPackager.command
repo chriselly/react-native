@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Copyright (c) 2015-present, Facebook, Inc.
 # All rights reserved.

@@ -118,17 +118,17 @@ static void RCTProfileForwardInvocation(NSObject *self, __unused SEL cmd, NSInvo
   NSString *name = [NSString stringWithFormat:@"-[%@ %@]", NSStringFromClass([self class]), NSStringFromSelector(invocation.selector)];
   SEL newSel = RCTProfileProxySelector(invocation.selector);
 
-  if ([object_getClass(self) instancesRespondToSelector:newSel]) {
-    invocation.selector = newSel;
-    RCTProfileBeginEvent();
-    [invocation invoke];
-    RCTProfileEndEvent(name, @"objc_call,modules,auto", nil);
-  } else if ([self respondsToSelector:invocation.selector]) {
-    [invocation invoke];
-  } else {
-    // Use original selector to don't change error message
-    [self doesNotRecognizeSelector:invocation.selector];
-  }
+  RCTProfileLock(
+    if ([object_getClass(self) instancesRespondToSelector:newSel]) {
+      invocation.selector = newSel;
+      RCTProfileBeginEvent();
+      [invocation invoke];
+      RCTProfileEndEvent(name, @"objc_call,modules,auto", nil);
+    } else {
+      // Use original selector to don't change error message
+      [self doesNotRecognizeSelector:invocation.selector];
+    }
+  );
 }
 
 static IMP RCTProfileMsgForward(NSObject *, SEL);
@@ -144,16 +144,13 @@ static IMP RCTProfileMsgForward(NSObject *self, SEL selector)
   return imp;
 }
 
-void RCTProfileHookModules(RCTBridge *bridge)
+static void RCTProfileHookModules(RCTBridge *);
+static void RCTProfileHookModules(RCTBridge *bridge)
 {
   for (RCTModuleData *moduleData in [bridge valueForKey:@"_modules"]) {
     [moduleData dispatchBlock:^{
-      Class moduleClass = moduleData.moduleClass;
+      Class moduleClass = moduleData.cls;
       Class proxyClass = objc_allocateClassPair(moduleClass, RCTProfileProxyClassName(moduleClass), 0);
-
-      if (!proxyClass) {
-        return;
-      }
 
       unsigned int methodCount;
       Method *methods = class_copyMethodList(moduleClass, &methodCount);
@@ -188,14 +185,19 @@ void RCTProfileHookModules(RCTBridge *bridge)
   }
 }
 
+void RCTProfileUnhookModules(RCTBridge *);
 void RCTProfileUnhookModules(RCTBridge *bridge)
 {
   for (RCTModuleData *moduleData in [bridge valueForKey:@"_modules"]) {
-    Class proxyClass = object_getClass(moduleData.instance);
-    if (moduleData.moduleClass != proxyClass) {
-      object_setClass(moduleData.instance, moduleData.moduleClass);
-      objc_disposeClassPair(proxyClass);
-    }
+    [moduleData dispatchBlock:^{
+      RCTProfileLock(
+        Class proxyClass = object_getClass(moduleData.instance);
+        if (moduleData.cls != proxyClass) {
+          object_setClass(moduleData.instance, moduleData.cls);
+          objc_disposeClassPair(proxyClass);
+        }
+      );
+    }];
   };
 }
 

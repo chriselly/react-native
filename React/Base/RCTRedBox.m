@@ -36,7 +36,7 @@
 {
   if ((self = [super initWithFrame:frame])) {
     _redColor = [UIColor colorWithRed:0.8 green:0 blue:0 alpha:1];
-    self.windowLevel = CGFLOAT_MAX;
+    self.windowLevel = UIWindowLevelStatusBar + 5;
     self.backgroundColor = _redColor;
     self.hidden = YES;
 
@@ -283,11 +283,6 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
   _nextBackgroundColor = color;
 }
 
-- (void)showError:(NSError *)error
-{
-  [self showErrorMessage:error.localizedDescription withDetails:error.localizedFailureReason];
-}
-
 - (void)showErrorMessage:(NSString *)message
 {
   [self showErrorMessage:message withStack:nil showIfHidden:YES];
@@ -347,7 +342,6 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
 @implementation RCTRedBox
 
 + (instancetype)sharedInstance { return nil; }
-- (void)showError:(NSError *)message {}
 - (void)showErrorMessage:(NSString *)message {}
 - (void)showErrorMessage:(NSString *)message withDetails:(NSString *)details {}
 - (void)showErrorMessage:(NSString *)message withStack:(NSArray *)stack {}

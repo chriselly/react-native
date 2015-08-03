@@ -181,10 +181,6 @@ var TouchableHighlight = React.createClass({
   },
 
   _showUnderlay: function() {
-    if (!this.isMounted()) {
-      return;
-    }
-
     this.refs[UNDERLAY_REF].setNativeProps(this.state.activeUnderlayProps);
     this.refs[CHILD_REF].setNativeProps(this.state.activeProps);
     this.props.onShowUnderlay && this.props.onShowUnderlay();

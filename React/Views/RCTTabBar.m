@@ -140,14 +140,6 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
   _tabController.tabBar.tintColor = tintColor;
 }
 
-- (BOOL)translucent {
-  return _tabController.tabBar.isTranslucent;
-}
-
-- (void)setTranslucent:(BOOL)translucent {
-  _tabController.tabBar.translucent = translucent;
-}
-
 #pragma mark - UITabBarControllerDelegate
 
 - (BOOL)tabBarController:(UITabBarController *)tabBarController shouldSelectViewController:(UIViewController *)viewController

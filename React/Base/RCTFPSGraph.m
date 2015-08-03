@@ -93,7 +93,7 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
   return label;
 }
 
-- (void)onTick:(NSTimeInterval)timestamp
+- (void)tick:(NSTimeInterval)timestamp
 {
   _frameCount++;
   if (_prevTime == -1) {

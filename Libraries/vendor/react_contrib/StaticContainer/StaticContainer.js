@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2a163cdb088fb963f941e627fd89ce11>>
+ * @generated SignedSource<<e158ef03956b8fface1e9d3f8d611322>>
  *
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * !! This file is a check-in of a static_upstream project!      !!
@@ -12,11 +12,8 @@
  * !!    static_upstream.                                        !!
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  *
- * Copyright 2004-present Facebook. All Rights Reserved.
- *
  * @providesModule StaticContainer.react
- * @typechecks
- * @flow
+ * @jsx React.DOM
  */
 
 var React = require('React');
@@ -38,17 +35,16 @@ var onlyChild = require('onlyChild');
  * Typically, you will not need to use this component and should opt for normal
  * React reconciliation.
  */
-class StaticContainer extends React.Component {
+var StaticContainer = React.createClass({
 
-  shouldComponentUpdate(nextProps: Object): boolean {
-    return !!nextProps.shouldUpdate;
+  shouldComponentUpdate: function(nextProps) {
+    return nextProps.shouldUpdate;
+  },
+
+  render: function() {
+    return onlyChild(this.props.children);
   }
 
-  render() {
-    var child = this.props.children;
-    return (child === null || child === false) ? null : onlyChild(child);
-  }
-
-}
+});
 
 module.exports = StaticContainer;

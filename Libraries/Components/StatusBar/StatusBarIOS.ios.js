@@ -35,10 +35,6 @@ var StatusBarIOS = {
     animation = animation || 'none';
     RCTStatusBarManager.setHidden(hidden, animation);
   },
-
-  setNetworkActivityIndicatorVisible(visible: boolean) {
-    RCTStatusBarManager.setNetworkActivityIndicatorVisible(visible);
-  },
 };
 
 module.exports = StatusBarIOS;

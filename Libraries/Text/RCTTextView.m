@@ -21,7 +21,6 @@
   NSString *_placeholder;
   UITextView *_placeholderView;
   UITextView *_textView;
-  NSInteger _nativeEventCount;
 }
 
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher
@@ -125,41 +124,11 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
   return _textView.text;
 }
 
-- (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
-{
-  if (_maxLength == nil) {
-    return YES;
-  }
-  NSUInteger allowedLength = _maxLength.integerValue - textView.text.length + range.length;
-  if (text.length > allowedLength) {
-    if (text.length > 1) {
-      // Truncate the input string so the result is exactly maxLength
-      NSString *limitedString = [text substringToIndex:allowedLength];
-      NSMutableString *newString = textView.text.mutableCopy;
-      [newString replaceCharactersInRange:range withString:limitedString];
-      textView.text = newString;
-      // Collapse selection at end of insert to match normal paste behavior
-      UITextPosition *insertEnd = [textView positionFromPosition:textView.beginningOfDocument
-                                                          offset:(range.location + allowedLength)];
-      textView.selectedTextRange = [textView textRangeFromPosition:insertEnd toPosition:insertEnd];
-      [self textViewDidChange:textView];
-    }
-    return NO;
-  } else {
-    return YES;
-  }
-}
-
 - (void)setText:(NSString *)text
 {
-  NSInteger eventLag = _nativeEventCount - _mostRecentEventCount;
-  if (eventLag == 0 && ![text isEqualToString:_textView.text]) {
-    UITextRange *selection = _textView.selectedTextRange;
+  if (![text isEqualToString:_textView.text]) {
     [_textView setText:text];
     [self _setPlaceholderVisibility];
-    _textView.selectedTextRange = selection; // maintain cursor position/selection - this is robust to out of bounds
-  } else if (eventLag > RCTTextUpdateLagWarningThreshold) {
-    RCTLogWarn(@"Native TextInput(%@) is %ld events ahead of JS - try to make your JS faster.", self.text, (long)eventLag);
   }
 }
 
@@ -201,18 +170,15 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
 
   [_eventDispatcher sendTextEventWithType:RCTTextEventTypeFocus
                                  reactTag:self.reactTag
-                                     text:textView.text
-                               eventCount:_nativeEventCount];
+                                     text:textView.text];
 }
 
 - (void)textViewDidChange:(UITextView *)textView
 {
   [self _setPlaceholderVisibility];
-  _nativeEventCount++;
   [_eventDispatcher sendTextEventWithType:RCTTextEventTypeChange
                                  reactTag:self.reactTag
-                                     text:textView.text
-                               eventCount:_nativeEventCount];
+                                     text:textView.text];
 
 }
 
@@ -220,8 +186,7 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
 {
   [_eventDispatcher sendTextEventWithType:RCTTextEventTypeEnd
                                  reactTag:self.reactTag
-                                     text:textView.text
-                               eventCount:_nativeEventCount];
+                                     text:textView.text];
 }
 
 - (BOOL)becomeFirstResponder
@@ -239,8 +204,7 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
   if (result) {
     [_eventDispatcher sendTextEventWithType:RCTTextEventTypeBlur
                                    reactTag:self.reactTag
-                                       text:_textView.text
-                                 eventCount:_nativeEventCount];
+                                       text:_textView.text];
   }
   return result;
 }
@@ -258,7 +222,7 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
 
 - (UIFont *)defaultPlaceholderFont
 {
-  return [UIFont systemFontOfSize:17];
+  return [UIFont fontWithName:@"Helvetica" size:17];
 }
 
 - (UIColor *)defaultPlaceholderTextColor

@@ -25,12 +25,12 @@ typedef NS_ENUM(NSInteger, RCTTestStatus) {
 /**
  * The snapshot test controller for this module.
  */
-@property (nonatomic, strong) FBSnapshotTestController *controller;
+@property (nonatomic, weak) FBSnapshotTestController *controller;
 
 /**
  * This is the view to be snapshotted.
  */
-@property (nonatomic, strong) UIView *view;
+@property (nonatomic, weak) UIView *view;
 
 /**
  * This is used to give meaningful names to snapshot image files.

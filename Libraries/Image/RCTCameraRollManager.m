@@ -14,33 +14,30 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-#import "RCTBridge.h"
 #import "RCTImageLoader.h"
 #import "RCTLog.h"
-#import "RCTUtils.h"
 
 @implementation RCTCameraRollManager
 
 RCT_EXPORT_MODULE()
 
-@synthesize bridge = _bridge;
-
 RCT_EXPORT_METHOD(saveImageWithTag:(NSString *)imageTag
                   successCallback:(RCTResponseSenderBlock)successCallback
-                  errorCallback:(RCTResponseErrorBlock)errorCallback)
+                  errorCallback:(RCTResponseSenderBlock)errorCallback)
 {
-  [_bridge.imageLoader loadImageWithTag:imageTag callback:^(NSError *loadError, UIImage *loadedImage) {
+  [RCTImageLoader loadImageWithTag:imageTag callback:^(NSError *loadError, UIImage *loadedImage) {
     if (loadError) {
-      errorCallback(loadError);
+      errorCallback(@[[loadError localizedDescription]]);
       return;
     }
-    [_bridge.assetsLibrary writeImageToSavedPhotosAlbum:[loadedImage CGImage] metadata:nil completionBlock:^(NSURL *assetURL, NSError *saveError) {
+    [[RCTImageLoader assetsLibrary] writeImageToSavedPhotosAlbum:[loadedImage CGImage] metadata:nil completionBlock:^(NSURL *assetURL, NSError *saveError) {
       if (saveError) {
-        RCTLogWarn(@"Error saving cropped image: %@", saveError);
-        errorCallback(saveError);
-      } else {
-        successCallback(@[[assetURL absoluteString]]);
+        NSString *errorMessage = [NSString stringWithFormat:@"Error saving cropped image: %@", saveError];
+        RCTLogWarn(@"%@", errorMessage);
+        errorCallback(@[errorMessage]);
+        return;
       }
+      successCallback(@[[assetURL absoluteString]]);
     }];
   }];
 }
@@ -66,7 +63,7 @@ RCT_EXPORT_METHOD(saveImageWithTag:(NSString *)imageTag
 
 RCT_EXPORT_METHOD(getPhotos:(NSDictionary *)params
                   callback:(RCTResponseSenderBlock)callback
-                  errorCallback:(RCTResponseErrorBlock)errorCallback)
+                  errorCallback:(RCTResponseSenderBlock)errorCallback)
 {
   NSUInteger first = [params[@"first"] integerValue];
   NSString *afterCursor = params[@"after"];
@@ -96,7 +93,7 @@ RCT_EXPORT_METHOD(getPhotos:(NSDictionary *)params
   BOOL __block calledCallback = NO;
   NSMutableArray *assets = [[NSMutableArray alloc] init];
 
-  [_bridge.assetsLibrary enumerateGroupsWithTypes:groupTypes usingBlock:^(ALAssetsGroup *group, BOOL *stopGroups) {
+  [[RCTImageLoader assetsLibrary] enumerateGroupsWithTypes:groupTypes usingBlock:^(ALAssetsGroup *group, BOOL *stopGroups) {
     if (group && (groupName == nil || [groupName isEqualToString:[group valueForProperty:ALAssetsGroupPropertyName]])) {
 
       if (assetType == nil || [assetType isEqualToString:@"Photos"]) {
@@ -163,7 +160,7 @@ RCT_EXPORT_METHOD(getPhotos:(NSDictionary *)params
     if (error.code != ALAssetsLibraryAccessUserDeniedError) {
       RCTLogError(@"Failure while iterating through asset groups %@", error);
     }
-    errorCallback(error);
+    errorCallback(@[error.description]);
   }];
 }
 

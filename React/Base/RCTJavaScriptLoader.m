@@ -21,7 +21,7 @@
 
 - (instancetype)initWithBridge:(RCTBridge *)bridge
 {
-  RCTAssert(bridge, @"bridge parameter is required");
+  RCTAssert(bridge, @"birdge parameter is required");
 
   if ((self = [super init])) {
     _bridge = bridge;

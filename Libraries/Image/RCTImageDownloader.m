@@ -9,31 +9,25 @@
 
 #import "RCTImageDownloader.h"
 
-#import "RCTDownloadTaskWrapper.h"
-#import "RCTImageUtils.h"
+#import "RCTCache.h"
 #import "RCTLog.h"
 #import "RCTUtils.h"
 
-typedef void (^RCTCachedDataDownloadBlock)(BOOL cached, NSURLResponse *response,
-                                           NSData *data, NSError *error);
-
-CGSize RCTTargetSizeForClipRect(CGRect);
-CGRect RCTClipRect(CGSize, CGFloat, CGSize, CGFloat, UIViewContentMode);
+typedef void (^RCTCachedDataDownloadBlock)(BOOL cached, NSData *data, NSError *error);
 
 @implementation RCTImageDownloader
 {
-  NSURLCache *_cache;
+  RCTCache *_cache;
   dispatch_queue_t _processingQueue;
   NSMutableDictionary *_pendingBlocks;
-  RCTDownloadTaskWrapper *_downloadTaskWrapper;
 }
 
-+ (RCTImageDownloader *)sharedInstance
++ (instancetype)sharedInstance
 {
   static RCTImageDownloader *sharedInstance;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    sharedInstance = [[RCTImageDownloader alloc] init];
+    sharedInstance = [[self alloc] init];
   });
   return sharedInstance;
 }
@@ -41,27 +35,27 @@ CGRect RCTClipRect(CGSize, CGFloat, CGSize, CGFloat, UIViewContentMode);
 - (instancetype)init
 {
   if ((self = [super init])) {
-    _cache = [[NSURLCache alloc] initWithMemoryCapacity:5 * 1024 * 1024 diskCapacity:200 * 1024 * 1024 diskPath:@"React/RCTImageDownloader"];
+    _cache = [[RCTCache alloc] initWithName:@"RCTImageDownloader"];
     _processingQueue = dispatch_queue_create("com.facebook.React.DownloadProcessingQueue", DISPATCH_QUEUE_SERIAL);
     _pendingBlocks = [[NSMutableDictionary alloc] init];
-
-    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-    _downloadTaskWrapper = [[RCTDownloadTaskWrapper alloc] initWithSessionConfiguration:config delegateQueue:nil];
   }
-
   return self;
 }
 
-- (RCTImageDownloadCancellationBlock)_downloadDataForURL:(NSURL *)url
-                                           progressBlock:progressBlock
-                                                   block:(RCTCachedDataDownloadBlock)block
+static NSString *RCTCacheKeyForURL(NSURL *url)
 {
-  NSString *const cacheKey = url.absoluteString;
+  return url.absoluteString;
+}
+
+- (id)_downloadDataForURL:(NSURL *)url block:(RCTCachedDataDownloadBlock)block
+{
+  NSString *cacheKey = RCTCacheKeyForURL(url);
 
   __block BOOL cancelled = NO;
-  __block NSURLSessionDownloadTask *task = nil;
+  __block NSURLSessionDataTask *task = nil;
 
-  RCTImageDownloadCancellationBlock cancel = ^{
+  dispatch_block_t cancel = ^{
+
     cancelled = YES;
 
     dispatch_async(_processingQueue, ^{
@@ -83,51 +77,30 @@ CGRect RCTClipRect(CGSize, CGFloat, CGSize, CGFloat, UIViewContentMode);
       _pendingBlocks[cacheKey] = [NSMutableArray arrayWithObject:block];
 
       __weak RCTImageDownloader *weakSelf = self;
-      RCTCachedDataDownloadBlock runBlocks = ^(BOOL cached, NSURLResponse *response, NSData *data, NSError *error) {
-
-        if (!error && [response isKindOfClass:[NSHTTPURLResponse class]]) {
-          NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-          if (httpResponse.statusCode != 200) {
-            data = nil;
-            error = [[NSError alloc] initWithDomain:NSURLErrorDomain
-                                               code:httpResponse.statusCode
-                                           userInfo:nil];
-          }
-        }
-
+      RCTCachedDataDownloadBlock runBlocks = ^(BOOL cached, NSData *data, NSError *error) {
         dispatch_async(_processingQueue, ^{
           RCTImageDownloader *strongSelf = weakSelf;
           NSArray *blocks = strongSelf->_pendingBlocks[cacheKey];
           [strongSelf->_pendingBlocks removeObjectForKey:cacheKey];
           for (RCTCachedDataDownloadBlock downloadBlock in blocks) {
-            downloadBlock(cached, response, data, error);
+            downloadBlock(cached, data, error);
           }
         });
       };
 
-      NSURLRequest *request = [NSURLRequest requestWithURL:url];
-      task = [_downloadTaskWrapper downloadData:url progressBlock:progressBlock completionBlock:^(NSURLResponse *response, NSData *data, NSError *error) {
-
-        if (!cancelled) {
-          runBlocks(NO, response, data, error);
-        }
-
-        if (response && !error) {
-          RCTImageDownloader *strongSelf = weakSelf;
-          NSCachedURLResponse *cachedResponse = [[NSCachedURLResponse alloc] initWithResponse:response data:data userInfo:nil storagePolicy:NSURLCacheStorageAllowed];
-          [strongSelf->_cache storeCachedResponse:cachedResponse forRequest:request];
-        }
-        task = nil;
-      }];
-
-      NSCachedURLResponse *cachedResponse = [_cache cachedResponseForRequest:request];
-      if (cancelled) {
-        return;
-      }
-
-      if (cachedResponse) {
-        runBlocks(YES, cachedResponse.response, cachedResponse.data, nil);
+      if ([_cache hasDataForKey:cacheKey]) {
+        [_cache fetchDataForKey:cacheKey completionHandler:^(NSData *data) {
+          if (!cancelled) {
+            runBlocks(YES, data, nil);
+          }
+        }];
       } else {
+        task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+          if (!cancelled) {
+            runBlocks(NO, data, error);
+          }
+        }];
+
         [task resume];
       }
     }
@@ -136,37 +109,126 @@ CGRect RCTClipRect(CGSize, CGFloat, CGSize, CGFloat, UIViewContentMode);
   return [cancel copy];
 }
 
-- (RCTImageDownloadCancellationBlock)downloadDataForURL:(NSURL *)url
-                                          progressBlock:(RCTDataProgressBlock)progressBlock
-                                                  block:(RCTDataDownloadBlock)block
+- (id)downloadDataForURL:(NSURL *)url block:(RCTDataDownloadBlock)block
 {
-  return [self _downloadDataForURL:url progressBlock:progressBlock block:^(BOOL cached, NSURLResponse *response, NSData *data, NSError *error) {
+  NSString *cacheKey = RCTCacheKeyForURL(url);
+  __weak RCTImageDownloader *weakSelf = self;
+  return [self _downloadDataForURL:url block:^(BOOL cached, NSData *data, NSError *error) {
+    if (!cached) {
+      RCTImageDownloader *strongSelf = weakSelf;
+      [strongSelf->_cache setData:data forKey:cacheKey];
+    }
     block(data, error);
   }];
 }
 
-- (RCTImageDownloadCancellationBlock)downloadImageForURL:(NSURL *)url
-                                                    size:(CGSize)size
-                                                   scale:(CGFloat)scale
-                                              resizeMode:(UIViewContentMode)resizeMode
-                                               tintColor:(UIColor *)tintColor
-                                         backgroundColor:(UIColor *)backgroundColor
-                                           progressBlock:(RCTDataProgressBlock)progressBlock
-                                                   block:(RCTImageDownloadBlock)block
+/**
+ * Returns the optimal context size for an image drawn using the clip rect
+ * returned by RCTClipRect.
+ */
+CGSize RCTTargetSizeForClipRect(CGRect);
+CGSize RCTTargetSizeForClipRect(CGRect clipRect)
 {
-  scale = scale ?: RCTScreenScale();
+  return (CGSize){
+    clipRect.size.width + clipRect.origin.x * 2,
+    clipRect.size.height + clipRect.origin.y * 2
+  };
+}
 
-  return [self downloadDataForURL:url progressBlock:progressBlock block:^(NSData *data, NSError *error) {
+/**
+ * This function takes an input content size & scale (typically from an image),
+ * a target size & scale that it will be drawn into (typically a CGContext) and
+ * then calculates the optimal rectangle to draw the image into so that it will
+ * be sized and positioned correctly if drawn using the specified content mode.
+ */
+CGRect RCTClipRect(CGSize, CGFloat, CGSize, CGFloat, UIViewContentMode);
+CGRect RCTClipRect(CGSize sourceSize, CGFloat sourceScale,
+                   CGSize destSize, CGFloat destScale,
+                   UIViewContentMode resizeMode)
+{
+  // Precompensate for scale
+  CGFloat scale = sourceScale / destScale;
+  sourceSize.width *= scale;
+  sourceSize.height *= scale;
+
+  // Calculate aspect ratios if needed (don't bother is resizeMode == stretch)
+  CGFloat aspect = 0.0, targetAspect = 0.0;
+  if (resizeMode != UIViewContentModeScaleToFill) {
+    aspect = sourceSize.width / sourceSize.height;
+    targetAspect = destSize.width / destSize.height;
+    if (aspect == targetAspect) {
+      resizeMode = UIViewContentModeScaleToFill;
+    }
+  }
+
+  switch (resizeMode) {
+    case UIViewContentModeScaleToFill: // stretch
+
+      sourceSize.width = MIN(destSize.width, sourceSize.width);
+      sourceSize.height = MIN(destSize.height, sourceSize.height);
+      return (CGRect){CGPointZero, sourceSize};
+
+    case UIViewContentModeScaleAspectFit: // contain
+
+      if (targetAspect <= aspect) { // target is taller than content
+        sourceSize.width = destSize.width = MIN(sourceSize.width, destSize.width);
+        sourceSize.height = sourceSize.width / aspect;
+      } else { // target is wider than content
+        sourceSize.height = destSize.height = MIN(sourceSize.height, destSize.height);
+        sourceSize.width = sourceSize.height * aspect;
+      }
+      return (CGRect){CGPointZero, sourceSize};
+
+    case UIViewContentModeScaleAspectFill: // cover
+
+      if (targetAspect <= aspect) { // target is taller than content
+
+        sourceSize.height = destSize.height = MIN(sourceSize.height, destSize.height);
+        sourceSize.width = sourceSize.height * aspect;
+        destSize.width = destSize.height * targetAspect;
+        return (CGRect){{(destSize.width - sourceSize.width) / 2, 0}, sourceSize};
+
+      } else { // target is wider than content
+
+        sourceSize.width = destSize.width = MIN(sourceSize.width, destSize.width);
+        sourceSize.height = sourceSize.width / aspect;
+        destSize.height = destSize.width / targetAspect;
+        return (CGRect){{0, (destSize.height - sourceSize.height) / 2}, sourceSize};
+      }
+
+    default:
+
+      RCTLogError(@"A resizeMode value of %zd is not supported", resizeMode);
+      return (CGRect){CGPointZero, destSize};
+  }
+}
+
+- (id)downloadImageForURL:(NSURL *)url
+                     size:(CGSize)size
+                    scale:(CGFloat)scale
+               resizeMode:(UIViewContentMode)resizeMode
+          backgroundColor:(UIColor *)backgroundColor
+                    block:(RCTImageDownloadBlock)block
+{
+  return [self downloadDataForURL:url block:^(NSData *data, NSError *error) {
+
     if (!data || error) {
       block(nil, error);
       return;
     }
 
+    if (CGSizeEqualToSize(size, CGSizeZero)) {
+      // Target size wasn't available yet, so abort image drawing
+      block(nil, nil);
+      return;
+    }
+
     UIImage *image = [UIImage imageWithData:data scale:scale];
-    if (image && !CGSizeEqualToSize(size, CGSizeZero)) {
+    if (image) {
 
       // Get scale and size
-      CGRect imageRect = RCTClipRect(image.size, scale, size, scale, resizeMode);
+      CGFloat destScale = scale ?: RCTScreenScale();
+      CGRect imageRect = RCTClipRect(image.size, image.scale, size, destScale, resizeMode);
       CGSize destSize = RCTTargetSizeForClipRect(imageRect);
 
       // Opacity optimizations
@@ -182,22 +244,24 @@ CGRect RCTClipRect(CGSize, CGFloat, CGSize, CGFloat, UIViewContentMode);
       }
 
       // Decompress image at required size
-      UIGraphicsBeginImageContextWithOptions(destSize, opaque, scale);
+      UIGraphicsBeginImageContextWithOptions(destSize, opaque, destScale);
       if (blendColor) {
         [blendColor setFill];
         UIRectFill((CGRect){CGPointZero, destSize});
-      }
-      if (tintColor) {
-        image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        [tintColor setFill];
       }
       [image drawInRect:imageRect];
       image = UIGraphicsGetImageFromCurrentImageContext();
       UIGraphicsEndImageContext();
     }
-
     block(image, nil);
   }];
+}
+
+- (void)cancelDownload:(id)downloadToken
+{
+  if (downloadToken) {
+    ((dispatch_block_t)downloadToken)();
+  }
 }
 
 @end

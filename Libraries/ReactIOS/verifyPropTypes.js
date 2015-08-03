@@ -14,24 +14,16 @@
 var ReactNativeStyleAttributes = require('ReactNativeStyleAttributes');
 var View = require('View');
 
-export type ComponentInterface = ReactClass<any, any, any> | {
-  name?: string;
-  displayName?: string;
-  propTypes: Object;
-};
-
 function verifyPropTypes(
-  componentInterface: ComponentInterface,
+  component: Function,
   viewConfig: Object,
-  nativePropsToIgnore?: ?Object
+  nativePropsToIgnore?: Object
 ) {
   if (!viewConfig) {
     return; // This happens for UnimplementedView.
   }
-  var componentName = componentInterface.name ||
-    componentInterface.displayName ||
-    'unknown';
-  if (!componentInterface.propTypes) {
+  var componentName = component.name || component.displayName;
+  if (!component.propTypes) {
     throw new Error(
       '`' + componentName + '` has no propTypes defined`'
     );
@@ -39,7 +31,7 @@ function verifyPropTypes(
 
   var nativeProps = viewConfig.NativeProps;
   for (var prop in nativeProps) {
-    if (!componentInterface.propTypes[prop] &&
+    if (!component.propTypes[prop] &&
         !View.propTypes[prop] &&
         !ReactNativeStyleAttributes[prop] &&
         (!nativePropsToIgnore || !nativePropsToIgnore[prop])) {

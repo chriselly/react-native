@@ -10,27 +10,30 @@
 #import <AdSupport/ASIdentifierManager.h>
 
 #import "RCTAdSupport.h"
-#import "RCTUtils.h"
 
 @implementation RCTAdSupport
 
 RCT_EXPORT_MODULE()
 
 RCT_EXPORT_METHOD(getAdvertisingId:(RCTResponseSenderBlock)callback
-                  withErrorCallback:(RCTResponseErrorBlock)errorCallback)
+                  withErrorCallback:(RCTResponseSenderBlock)errorCallback)
 {
-  NSUUID *advertisingIdentifier = [ASIdentifierManager sharedManager].advertisingIdentifier;
-  if (advertisingIdentifier) {
-    callback(@[advertisingIdentifier.UUIDString]);
+  if ([ASIdentifierManager class]) {
+    callback(@[[[[ASIdentifierManager sharedManager] advertisingIdentifier] UUIDString]]);
   } else {
-    errorCallback(RCTErrorWithMessage(@"Advertising identifier is unavailable."));
+    return errorCallback(@[@"as_identifier_unavailable"]);
   }
 }
 
 RCT_EXPORT_METHOD(getAdvertisingTrackingEnabled:(RCTResponseSenderBlock)callback
-                  withErrorCallback:(__unused RCTResponseSenderBlock)errorCallback)
+                  withErrorCallback:(RCTResponseSenderBlock)errorCallback)
 {
-  callback(@[@([ASIdentifierManager sharedManager].advertisingTrackingEnabled)]);
+  if ([ASIdentifierManager class]) {
+    BOOL hasTracking = [[ASIdentifierManager sharedManager] isAdvertisingTrackingEnabled];
+    callback(@[@(hasTracking)]);
+  } else {
+    return errorCallback(@[@"as_identifier_unavailable"]);
+  }
 }
 
 @end

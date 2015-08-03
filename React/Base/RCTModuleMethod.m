@@ -32,8 +32,6 @@
   NSArray *_argumentBlocks;
 }
 
-RCT_NOT_IMPLEMENTED(-init)
-
 - (instancetype)initWithObjCMethodName:(NSString *)objCMethodName
                           JSMethodName:(NSString *)JSMethodName
                            moduleClass:(Class)moduleClass
@@ -42,12 +40,10 @@ RCT_NOT_IMPLEMENTED(-init)
     static NSRegularExpression *typeRegex;
     static NSRegularExpression *selectorRegex;
     if (!typeRegex) {
-      NSString *unusedPattern = @"(?:__unused|__attribute__\\(\\(unused\\)\\))";
+      NSString *unusedPattern = @"(?:(?:__unused|__attribute__\\(\\(unused\\)\\)))";
       NSString *constPattern = @"(?:const)";
-      NSString *nullabilityPattern = @"(?:__nullable|__nonnull|nullable|nonnull)";
-      NSString *annotationPattern = [NSString stringWithFormat:@"(?:(?:%@|%@|%@)\\s*)",
-                                     unusedPattern, constPattern, nullabilityPattern];
-      NSString *pattern = [NSString stringWithFormat:@"\\(%1$@?(\\w+?)(?:\\s*\\*)?%1$@?\\)", annotationPattern];
+      NSString *constUnusedPattern = [NSString stringWithFormat:@"(?:(?:%@|%@)\\s*)", unusedPattern, constPattern];
+      NSString *pattern = [NSString stringWithFormat:@"\\(%1$@?(\\w+?)(?:\\s*\\*)?%1$@?\\)", constUnusedPattern];
       typeRegex = [[NSRegularExpression alloc] initWithPattern:pattern options:0 error:NULL];
 
       selectorRegex = [[NSRegularExpression alloc] initWithPattern:@"(?<=:).*?(?=[a-zA-Z_]+:|$)" options:0 error:NULL];
@@ -88,10 +84,10 @@ RCT_NOT_IMPLEMENTED(-init)
     NSMutableArray *argumentBlocks = [[NSMutableArray alloc] initWithCapacity:numberOfArguments - 2];
 
 #define RCT_ARG_BLOCK(_logic) \
-  [argumentBlocks addObject:^(__unused RCTBridge *bridge, NSInvocation *invocation, NSUInteger index, id json) { \
+  [argumentBlocks addObject:^(__unused RCTBridge *bridge, __unused NSNumber *context, NSInvocation *invocation, NSUInteger index, id json) { \
     _logic \
     [invocation setArgument:&value atIndex:index]; \
-  }];
+  }]; \
 
     void (^addBlockArgument)(void) = ^{
       RCT_ARG_BLOCK(
@@ -154,7 +150,7 @@ case _value: { \
             RCT_CONVERT_CASE('^', void *)
 
             case '{': {
-              [argumentBlocks addObject:^(__unused RCTBridge *bridge, NSInvocation *invocation, NSUInteger index, id json) {
+              [argumentBlocks addObject:^(__unused RCTBridge *bridge, __unused NSNumber *context, NSInvocation *invocation, NSUInteger index, id json) {
                 NSMethodSignature *methodSignature = [RCTConvert methodSignatureForSelector:selector];
                 void *returnValue = malloc(methodSignature.methodReturnLength);
                 NSInvocation *_invocation = [NSInvocation invocationWithMethodSignature:methodSignature];
@@ -176,22 +172,6 @@ case _value: { \
           }
         } else if ([argumentName isEqualToString:@"RCTResponseSenderBlock"]) {
           addBlockArgument();
-        } else if ([argumentName isEqualToString:@"RCTResponseErrorBlock"]) {
-          RCT_ARG_BLOCK(
-
-            if (RCT_DEBUG && json && ![json isKindOfClass:[NSNumber class]]) {
-              RCTLogError(@"Argument %tu (%@) of %@.%@ should be a number", index,
-                          json, RCTBridgeModuleNameForClass(_moduleClass), _JSMethodName);
-              return;
-            }
-
-            // Marked as autoreleasing, because NSInvocation doesn't retain arguments
-            __autoreleasing id value = (json ? ^(NSError *error) {
-              [bridge _invokeAndProcessModule:@"BatchedBridge"
-                                       method:@"invokeCallbackAndReturnFlushedQueue"
-                                    arguments:@[json, @[RCTJSErrorFromNSError(error)]]];
-            } : ^(__unused NSError *error) {});
-          )
         } else if ([argumentName isEqualToString:@"RCTPromiseResolveBlock"]) {
           RCTAssert(i == numberOfArguments - 2,
                     @"The RCTPromiseResolveBlock must be the second to last parameter in -[%@ %@]",
@@ -249,6 +229,7 @@ case _value: { \
 - (void)invokeWithBridge:(RCTBridge *)bridge
                   module:(id)module
                arguments:(NSArray *)arguments
+                 context:(NSNumber *)context
 {
   if (RCT_DEBUG) {
 
@@ -283,8 +264,8 @@ case _value: { \
   NSUInteger index = 0;
   for (id json in arguments) {
     id arg = RCTNilIfNull(json);
-    void (^block)(RCTBridge *, NSInvocation *, NSUInteger, id) = _argumentBlocks[index];
-    block(bridge, invocation, index + 2, arg);
+    void (^block)(RCTBridge *, NSNumber *, NSInvocation *, NSUInteger, id) = _argumentBlocks[index];
+    block(bridge, context, invocation, index + 2, arg);
     index++;
   }
 

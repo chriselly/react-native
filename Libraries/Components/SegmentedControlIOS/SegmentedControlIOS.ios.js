@@ -18,6 +18,7 @@ var React = require('React');
 var StyleSheet = require('StyleSheet');
 
 var requireNativeComponent = require('requireNativeComponent');
+var verifyPropTypes = require('verifyPropTypes');
 
 type DefaultProps = {
   values: Array<string>;

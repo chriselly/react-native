@@ -26,6 +26,7 @@
 #import "RCTScrollableProtocol.h"
 #import "RCTShadowView.h"
 #import "RCTSparseArray.h"
+#import "RCTTouchHandler.h"
 #import "RCTUtils.h"
 #import "RCTView.h"
 #import "RCTViewManager.h"
@@ -57,23 +58,20 @@ static void RCTTraverseViewNodes(id<RCTViewNodeProtocol> view, react_view_node_b
 
 @implementation RCTAnimation
 
-static UIViewAnimationOptions UIViewAnimationOptionsFromRCTAnimationType(RCTAnimationType type)
+static UIViewAnimationCurve UIViewAnimationCurveFromRCTAnimationType(RCTAnimationType type)
 {
   switch (type) {
     case RCTAnimationTypeLinear:
-      return UIViewAnimationOptionCurveLinear;
+      return UIViewAnimationCurveLinear;
     case RCTAnimationTypeEaseIn:
-      return UIViewAnimationOptionCurveEaseIn;
+      return UIViewAnimationCurveEaseIn;
     case RCTAnimationTypeEaseOut:
-      return UIViewAnimationOptionCurveEaseOut;
+      return UIViewAnimationCurveEaseOut;
     case RCTAnimationTypeEaseInEaseOut:
-      return UIViewAnimationOptionCurveEaseInOut;
-    case RCTAnimationTypeKeyboard:
-      // http://stackoverflow.com/questions/18870447/how-to-use-the-default-ios7-uianimation-curve
-      return (UIViewAnimationOptions)(7 << 16);
+      return UIViewAnimationCurveEaseInOut;
     default:
       RCTLogError(@"Unsupported animation type %zd", type);
-      return UIViewAnimationOptionCurveEaseInOut;
+      return UIViewAnimationCurveEaseInOut;
   }
 }
 
@@ -125,7 +123,7 @@ static UIViewAnimationOptions UIViewAnimationOptionsFromRCTAnimationType(RCTAnim
   } else {
 
     UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState |
-      UIViewAnimationOptionsFromRCTAnimationType(_animationType);
+      UIViewAnimationCurveFromRCTAnimationType(_animationType);
 
     [UIView animateWithDuration:_duration
                           delay:_delay
@@ -139,11 +137,10 @@ static UIViewAnimationOptions UIViewAnimationOptionsFromRCTAnimationType(RCTAnim
 
 @interface RCTLayoutAnimation : NSObject
 
-@property (nonatomic, copy) NSDictionary *config;
 @property (nonatomic, strong) RCTAnimation *createAnimation;
 @property (nonatomic, strong) RCTAnimation *updateAnimation;
 @property (nonatomic, strong) RCTAnimation *deleteAnimation;
-@property (nonatomic, copy) RCTResponseSenderBlock callback;
+@property (nonatomic, strong) RCTResponseSenderBlock callback;
 
 @end
 
@@ -156,7 +153,7 @@ static UIViewAnimationOptions UIViewAnimationOptionsFromRCTAnimationType(RCTAnim
   }
 
   if ((self = [super init])) {
-    _config = [config copy];
+
     NSTimeInterval duration = [RCTConvert NSTimeInterval:config[@"duration"]];
     if (duration > 0.0 && duration < 0.01) {
       RCTLogError(@"RCTLayoutAnimation expects timings to be in ms, not seconds.");
@@ -1013,9 +1010,7 @@ RCT_EXPORT_METHOD(measure:(NSNumber *)reactTag
   [self addUIBlock:^(__unused RCTUIManager *uiManager, RCTSparseArray *viewRegistry) {
     UIView *view = viewRegistry[reactTag];
     if (!view) {
-      // this view was probably collapsed out
-      RCTLogWarn(@"measure cannot find view with tag #%@", reactTag);
-      callback(@[]);
+      RCTLogError(@"measure cannot find view with tag #%@", reactTag);
       return;
     }
     CGRect frame = view.frame;
@@ -1408,13 +1403,8 @@ RCT_EXPORT_METHOD(clearJSResponder)
   for (RCTViewManager *manager in _viewManagers.allValues) {
     if (RCTClassOverridesInstanceMethod([manager class], @selector(customDirectEventTypes))) {
       NSDictionary *eventTypes = [manager customDirectEventTypes];
-      if (RCT_DEV) {
-        for (NSString *eventName in eventTypes) {
-          id eventType = customDirectEventTypes[eventName];
-          RCTAssert(!eventType || [eventType isEqual:eventTypes[eventName]],
-                    @"Event '%@' registered multiple times with different "
-                    "properties.", eventName);
-        }
+      for (NSString *eventName in eventTypes) {
+        RCTAssert(!customDirectEventTypes[eventName], @"Event '%@' registered multiple times.", eventName);
       }
       [customDirectEventTypes addEntriesFromDictionary:eventTypes];
     }
@@ -1468,8 +1458,8 @@ RCT_EXPORT_METHOD(configureNextLayoutAnimation:(NSDictionary *)config
                   withCallback:(RCTResponseSenderBlock)callback
                   errorCallback:(__unused RCTResponseSenderBlock)errorCallback)
 {
-  if (_nextLayoutAnimation && ![config isEqualToDictionary:_nextLayoutAnimation.config]) {
-    RCTLogWarn(@"Warning: Overriding previous layout animation with new one before the first began:\n%@ -> %@.", _nextLayoutAnimation.config, config);
+  if (_nextLayoutAnimation) {
+    RCTLogWarn(@"Warning: Overriding previous layout animation with new one before the first began:\n%@ -> %@.", _nextLayoutAnimation, config);
   }
   if (config[@"delete"] != nil) {
     RCTLogError(@"LayoutAnimation only supports create and update right now. Config: %@", config);

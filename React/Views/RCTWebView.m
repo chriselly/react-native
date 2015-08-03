@@ -18,13 +18,6 @@
 #import "RCTView.h"
 #import "UIView+React.h"
 
-// Special scheme that allow JS to notify the WebView to emit
-// navigation event.
-//
-// JavaScript Example:
-//   window.location.href = 'react-js-navigation://hello'
-NSString *const RCTJSNavigationScheme = @"react-js-navigation";
-
 @interface RCTWebView () <UIWebViewDelegate, RCTAutoInsetsProtocol>
 
 @end
@@ -33,7 +26,6 @@ NSString *const RCTJSNavigationScheme = @"react-js-navigation";
 {
   RCTEventDispatcher *_eventDispatcher;
   UIWebView *_webView;
-  NSString *_injectedJavaScript;
 }
 
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher
@@ -144,6 +136,7 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
 
 #pragma mark - UIWebViewDelegate methods
 
+static NSString *const RCTJSAJAXScheme = @"react-ajax";
 
 - (BOOL)webView:(__unused UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request
  navigationType:(UIWebViewNavigationType)navigationType
@@ -159,8 +152,8 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
     [_eventDispatcher sendInputEventWithName:@"topLoadingStart" body:event];
   }
 
-  // JS Navigation handler
-  return ![request.URL.scheme isEqualToString:RCTJSNavigationScheme];
+  // AJAX handler
+  return ![request.URL.scheme isEqualToString:RCTJSAJAXScheme];
 }
 
 - (void)webView:(__unused UIWebView *)webView didFailLoadWithError:(NSError *)error
@@ -184,8 +177,33 @@ RCT_NOT_IMPLEMENTED(-initWithCoder:(NSCoder *)aDecoder)
 
 - (void)webViewDidFinishLoad:(UIWebView *)webView
 {
-  if (_injectedJavaScript != nil) {
-    [webView stringByEvaluatingJavaScriptFromString:_injectedJavaScript];
+  if (_shouldInjectAJAXHandler) {
+
+    // From http://stackoverflow.com/questions/5353278/uiwebviewdelegate-not-monitoring-xmlhttprequest
+
+    [webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"\
+      var s_ajaxListener = new Object();                       \n\
+      s_ajaxListener.tempOpen = XMLHttpRequest.prototype.open; \n\
+      s_ajaxListener.tempSend = XMLHttpRequest.prototype.send; \n\
+      s_ajaxListener.callback = function() {                   \n\
+        window.location.href = '%@://' + this.url;             \n\
+      }                                                        \n\
+      XMLHttpRequest.prototype.open = function(a,b) {          \n\
+        s_ajaxListener.tempOpen.apply(this, arguments);        \n\
+        s_ajaxListener.method = a;                             \n\
+        s_ajaxListener.url = b;                                \n\
+        if (a.toLowerCase() === 'get') {                       \n\
+          s_ajaxListener.data = (b.split('?'))[1];             \n\
+        }                                                      \n\
+      }                                                        \n\
+      XMLHttpRequest.prototype.send = function(a,b) {          \n\
+        s_ajaxListener.tempSend.apply(this, arguments);        \n\
+        if (s_ajaxListener.method.toLowerCase() === 'post') {  \n\
+          s_ajaxListener.data = a;                             \n\
+        }                                                      \n\
+        s_ajaxListener.callback();                             \n\
+      }                                                        \n\
+    ", RCTJSAJAXScheme]];
   }
 
   // we only need the final 'finishLoad' call so only fire the event when we're actually done loading.

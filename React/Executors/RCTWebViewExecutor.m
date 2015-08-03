@@ -92,11 +92,12 @@ RCT_EXPORT_MODULE()
 - (void)executeJSCall:(NSString *)name
                method:(NSString *)method
             arguments:(NSArray *)arguments
+              context:(NSNumber *)executorID
              callback:(RCTJavaScriptCallback)onComplete
 {
   RCTAssert(onComplete != nil, @"");
   [self executeBlockOnJavaScriptQueue:^{
-    if (!self.isValid) {
+    if (!self.isValid || ![RCTGetExecutorID(self) isEqualToNumber:executorID]) {
       return;
     }
 

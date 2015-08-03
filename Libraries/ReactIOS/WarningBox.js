@@ -174,13 +174,15 @@ var WarningRow = React.createClass({
         {...this.panGesture.panHandlers}>
         <TouchableOpacity
           onPress={this.props.onOpened}>
-          <Text
-            style={styles.warningText}
-            numberOfLines={2}
-            ref={text => { this.text = text; }}>
-            {countText}
-            {this.props.warning}
-          </Text>
+          <View>
+            <Text
+              style={styles.warningText}
+              numberOfLines={2}
+              ref={text => { this.text = text; }}>
+              {countText}
+              {this.props.warning}
+            </Text>
+          </View>
         </TouchableOpacity>
         <View
           ref={closeButton => { this.closeButton = closeButton; }}
@@ -210,27 +212,30 @@ var WarningBoxOpened = React.createClass({
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={this.props.onClose}
-        style={styles.yellowBox}>
-        <Text style={styles.yellowBoxText}>
-          {countText}
-          {this.props.warning}
-        </Text>
-        <View style={styles.yellowBoxButtons}>
-          <TouchableOpacity
-            onPress={this.props.onDismissed}
-            style={styles.yellowBoxButton}>
-            <Text style={styles.yellowBoxButtonText}>
-              Dismiss
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={this.props.onIgnored}
-            style={styles.yellowBoxButton}>
-            <Text style={styles.yellowBoxButtonText}>
-              Ignore
-            </Text>
-          </TouchableOpacity>
+        onPress={this.props.onClose}>
+        <View style={styles.yellowBox}>
+          <Text style={styles.yellowBoxText}>
+            {countText}
+            {this.props.warning}
+          </Text>
+          <View style={styles.yellowBoxButtons}>
+            <View style={styles.yellowBoxButton}>
+              <TouchableOpacity
+                onPress={this.props.onDismissed}>
+                <Text style={styles.yellowBoxButtonText}>
+                  Dismiss
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.yellowBoxButton}>
+              <TouchableOpacity
+                onPress={this.props.onIgnored}>
+                <Text style={styles.yellowBoxButtonText}>
+                  Ignore
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </TouchableOpacity>
     );

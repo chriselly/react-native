@@ -97,7 +97,7 @@ RCT_EXPORT_MODULE()
 {
   __block NSError *initError;
   dispatch_semaphore_t s = dispatch_semaphore_create(0);
-  [self sendMessage:@{@"method": @"prepareJSRuntime"} waitForReply:^(NSError *error, NSDictionary *reply) {
+  [self sendMessage:@{@"method": @"prepareJSRuntime"} context:nil waitForReply:^(NSError *error, NSDictionary *reply) {
     initError = error;
     dispatch_semaphore_signal(s);
   }];
@@ -126,7 +126,7 @@ RCT_EXPORT_MODULE()
   RCTLogError(@"WebSocket connection failed with error %@", error);
 }
 
-- (void)sendMessage:(NSDictionary *)message waitForReply:(RCTWSMessageCallback)callback
+- (void)sendMessage:(NSDictionary *)message context:(NSNumber *)executorID waitForReply:(RCTWSMessageCallback)callback
 {
   static NSUInteger lastID = 10000;
 
@@ -136,6 +136,8 @@ RCT_EXPORT_MODULE()
         NSLocalizedDescriptionKey: @"socket closed"
       }];
       callback(error, nil);
+      return;
+    } else if (executorID && ![RCTGetExecutorID(self) isEqualToNumber:executorID]) {
       return;
     }
 
@@ -150,12 +152,12 @@ RCT_EXPORT_MODULE()
 - (void)executeApplicationScript:(NSString *)script sourceURL:(NSURL *)URL onComplete:(RCTJavaScriptCompleteBlock)onComplete
 {
   NSDictionary *message = @{@"method": @"executeApplicationScript", @"url": [URL absoluteString], @"inject": _injectedObjects};
-  [self sendMessage:message waitForReply:^(NSError *error, NSDictionary *reply) {
+  [self sendMessage:message context:nil waitForReply:^(NSError *error, NSDictionary *reply) {
     onComplete(error);
   }];
 }
 
-- (void)executeJSCall:(NSString *)name method:(NSString *)method arguments:(NSArray *)arguments callback:(RCTJavaScriptCallback)onComplete
+- (void)executeJSCall:(NSString *)name method:(NSString *)method arguments:(NSArray *)arguments context:(NSNumber *)executorID callback:(RCTJavaScriptCallback)onComplete
 {
   RCTAssert(onComplete != nil, @"callback was missing for exec JS call");
   NSDictionary *message = @{
@@ -164,7 +166,7 @@ RCT_EXPORT_MODULE()
     @"moduleMethod": method,
     @"arguments": arguments
   };
-  [self sendMessage:message waitForReply:^(NSError *socketError, NSDictionary *reply) {
+  [self sendMessage:message context:executorID waitForReply:^(NSError *socketError, NSDictionary *reply) {
     if (socketError) {
       onComplete(nil, socketError);
       return;

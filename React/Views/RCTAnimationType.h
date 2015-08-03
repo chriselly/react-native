@@ -15,5 +15,4 @@ typedef NS_ENUM(NSInteger, RCTAnimationType) {
   RCTAnimationTypeEaseIn,
   RCTAnimationTypeEaseOut,
   RCTAnimationTypeEaseInEaseOut,
-  RCTAnimationTypeKeyboard,
 };

@@ -50,7 +50,7 @@ var AppContainer = React.createClass({
     var warningBox = shouldRenderWarningBox ? <WarningBox /> : null;
     return (
       <View style={styles.appContainer}>
-        <View collapsible={false} style={styles.appContainer} ref="main">
+        <View style={styles.appContainer} ref="main">
           {this.props.children}
         </View>
         {warningBox}
@@ -69,11 +69,6 @@ function renderApplication<D, P, S>(
     rootTag,
     'Expect to have a valid rootTag, instead got ', rootTag
   );
-  // not when debugging in chrome
-  if (__DEV__ && !window.document) {
-    var setupDevtools = require('setupDevtools');
-    setupDevtools();
-  }
   React.render(
     <AppContainer rootTag={rootTag}>
       <RootComponent

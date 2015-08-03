@@ -8,19 +8,13 @@
  */
 'use strict';
 
-var path = require('path');
-
 // Don't forget to everything listed here to `testConfig.json`
 // modulePathIgnorePatterns.
 var sharedBlacklist = [
   'website',
-  'node_modules/react-tools/src/React.js',
-  'node_modules/react-tools/src/renderers/shared/event/EventPropagators.js',
-  'node_modules/react-tools/src/renderers/shared/event/eventPlugins/ResponderEventPlugin.js',
-  'node_modules/react-tools/src/renderers/shared/event/eventPlugins/ResponderSyntheticEvent.js',
-  'node_modules/react-tools/src/renderers/shared/event/eventPlugins/ResponderTouchHistoryStore.js',
-  'node_modules/react-tools/src/renderers/shared/reconciler/ReactInstanceHandles.js',
-  'node_modules/react-tools/src/shared/vendor/core/ExecutionEnvironment.js',
+  'node_modules/react-tools/src/utils/ImmutableObject.js',
+  'node_modules/react-tools/src/core/ReactInstanceHandles.js',
+  'node_modules/react-tools/src/event/EventPropagators.js'
 ];
 
 var platformBlacklists = {
@@ -28,19 +22,24 @@ var platformBlacklists = {
     '.ios.js'
   ],
   ios: [
+    'node_modules/react-tools/src/browser/ui/React.js',
+    'node_modules/react-tools/src/browser/eventPlugins/ResponderEventPlugin.js',
+    // 'node_modules/react-tools/src/vendor/core/ExecutionEnvironment.js',
     '.web.js',
     '.android.js',
   ],
   android: [
+    'node_modules/react-tools/src/browser/ui/React.js',
+    'node_modules/react-tools/src/browser/eventPlugins/ResponderEventPlugin.js',
+    'node_modules/react-tools/src/browser/ReactTextComponent.js',
+    // 'node_modules/react-tools/src/vendor/core/ExecutionEnvironment.js',
     '.web.js',
     '.ios.js',
   ],
 };
 
 function escapeRegExp(str) {
-  var escaped = str.replace(/[\-\[\]\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
-  // convert the '/' into an escaped local file separator
-  return escaped.replace(/\//g,'\\' + path.sep);
+  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
 }
 
 function blacklist(platform, additionalBlacklist) {

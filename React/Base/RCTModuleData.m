@@ -23,8 +23,8 @@
     _javaScriptExecutor = javaScriptExecutor;
     _uid = uid;
     _instance = instance;
-    _moduleClass = [instance class];
-    _name = RCTBridgeModuleNameForClass(_moduleClass);
+    _cls = [instance class];
+    _name = RCTBridgeModuleNameForClass(_cls);
 
     [self loadMethods];
     [self generateConfig];
@@ -39,18 +39,18 @@ RCT_NOT_IMPLEMENTED(-init);
 {
   NSMutableArray *moduleMethods = [[NSMutableArray alloc] init];
   unsigned int methodCount;
-  Method *methods = class_copyMethodList(object_getClass(_moduleClass), &methodCount);
+  Method *methods = class_copyMethodList(object_getClass(_cls), &methodCount);
 
   for (unsigned int i = 0; i < methodCount; i++) {
     Method method = methods[i];
     SEL selector = method_getName(method);
     if ([NSStringFromSelector(selector) hasPrefix:@"__rct_export__"]) {
       IMP imp = method_getImplementation(method);
-      NSArray *entries = ((NSArray *(*)(id, SEL))imp)(_moduleClass, selector);
+      NSArray *entries = ((NSArray *(*)(id, SEL))imp)(_cls, selector);
       RCTModuleMethod *moduleMethod =
       [[RCTModuleMethod alloc] initWithObjCMethodName:entries[1]
                                          JSMethodName:entries[0]
-                                          moduleClass:_moduleClass];
+                                          moduleClass:_cls];
 
       [moduleMethods addObject:moduleMethod];
     }

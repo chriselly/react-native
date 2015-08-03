@@ -7,58 +7,20 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#import <UIKit/UIKit.h>
-
-#import "RCTBridge.h"
+#import <Foundation/Foundation.h>
 
 @class ALAssetsLibrary;
+@class UIImage;
 
-typedef void (^RCTImageLoaderProgressBlock)(int64_t written, int64_t total);
-typedef void (^RCTImageLoaderCompletionBlock)(NSError *error, id image /* UIImage or CAAnimation */);
-typedef void (^RCTImageLoaderCancellationBlock)(void);
+@interface RCTImageLoader : NSObject
 
-@interface RCTImageLoader : NSObject <RCTBridgeModule>
-
-/**
- * Loads the specified image at the highest available resolution.
- * Can be called from any thread, will always call callback on main thread.
- */
-- (RCTImageLoaderCancellationBlock)loadImageWithTag:(NSString *)imageTag
-                                           callback:(RCTImageLoaderCompletionBlock)callback;
++ (ALAssetsLibrary *)assetsLibrary;
 
 /**
- * As above, but includes target size, scale and resizeMode, which are used to
- * select the optimal dimensions for the loaded image.
+ * Can be called from any thread.
+ * Will always call callback on main thread.
  */
-- (RCTImageLoaderCancellationBlock)loadImageWithTag:(NSString *)imageTag
-                                               size:(CGSize)size
-                                              scale:(CGFloat)scale
-                                         resizeMode:(UIViewContentMode)resizeMode
-                                      progressBlock:(RCTImageLoaderProgressBlock)progress
-                                    completionBlock:(RCTImageLoaderCompletionBlock)completion;
-
-/**
- * Is the specified image tag an asset library image?
- */
-+ (BOOL)isAssetLibraryImage:(NSString *)imageTag;
-
-/**
- * Is the specified image tag a remote image?
- */
-+ (BOOL)isRemoteImage:(NSString *)imageTag;
-
-@end
-
-@interface RCTBridge (RCTImageLoader)
-
-/**
- * The shared image loader instance
- */
-@property (nonatomic, readonly) RCTImageLoader *imageLoader;
-
-/**
- * The shared asset library instance.
- */
-@property (nonatomic, readonly) ALAssetsLibrary *assetsLibrary;
++ (void)loadImageWithTag:(NSString *)tag
+                callback:(void (^)(NSError *error, id /* UIImage or CAAnimation */ image))callback;
 
 @end
